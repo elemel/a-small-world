@@ -58,7 +58,7 @@ function Structure:init(planet, config)
             angle = cannonAngle,
             fireDelay = 0.5,
             bulletRadius = 0.25,
-            bulletVelocity = 32,
+            bulletVelocity = 16,
             bulletTtl = 16,
         })
     end
