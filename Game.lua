@@ -167,13 +167,15 @@ function Game:mousepressed(x, y, button, istouch)
             height = 3 * math.cos(math.pi / 6)
         end
 
-        if structureType and cost < self.money then
-            self.money = self.money - cost
+        local worldX, worldY = self.camera:toWorldPoint(x, y)
+        local angle = math.atan2(worldY, worldX)
+        local x = self.planet.radius * math.cos(angle)
+        local y = self.planet.radius * math.sin(angle)
 
-            local worldX, worldY = self.camera:toWorldPoint(x, y)
-            local angle = math.atan2(worldY, worldX)
-            local x = self.planet.radius * math.cos(angle)
-            local y = self.planet.radius * math.sin(angle)
+        local nearestStructure = self.planet:findNearestStructure(x, y, 4.5)
+
+        if structureType and cost < self.money and not nearestStructure then
+            self.money = self.money - cost
 
             utils.newInstance(Structure, self.planet, {
                 structureType = structureType,

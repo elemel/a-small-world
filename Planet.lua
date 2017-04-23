@@ -61,4 +61,20 @@ function Planet:draw()
     end
 end
 
+function Planet:findNearestStructure(x, y, maxDistance)
+    local minSquaredDistance = maxDistance and maxDistance ^ 2 or math.huge
+    local nearestStructure = nil
+
+    for i, structure in ipairs(self.structures) do
+        local squaredDistance = (structure.x - x) ^ 2 + (structure.y - y) ^ 2
+
+        if squaredDistance < minSquaredDistance then
+            minSquaredDistance = squaredDistance
+            nearestStructure = structure
+        end
+    end
+
+    return nearestStructure
+end
+
 return Planet
