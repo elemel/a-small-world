@@ -147,13 +147,19 @@ function Game:mousepressed(x, y, button, istouch)
         local structureType = nil
         local cost = 0
         local color = {0x00, 0x99, 0xcc, 0xff}
+        local width
+        local height
 
         if self.mineButton.selected then
             structureType = "mine"
             cost = 100
+            width = 3
+            height = 3
         elseif self.cannonButton.selected then
             structureType = "cannon"
             cost = 100
+            width = 3
+            height = 3 * math.cos(math.pi / 6)
         end
 
         if structureType and cost < self.money then
@@ -161,9 +167,6 @@ function Game:mousepressed(x, y, button, istouch)
 
             local worldX, worldY = self.camera:toWorldPoint(x, y)
             local angle = math.atan2(worldY, worldX)
-            local width = 2 + 1 * love.math.random()
-            local height = 2 + 1 * love.math.random()
-
             local x = self.planet.radius * math.cos(angle)
             local y = self.planet.radius * math.sin(angle)
 

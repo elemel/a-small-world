@@ -11,7 +11,7 @@ function Wave:init(planet, config)
 
     self.ship = utils.newInstance(Ship, self.planet, {
         width = 2,
-        height = 3,
+        height = 2 * math.cos(math.pi / 6),
         color = {0xff, 0x66, 0x00, 0xff},
     })
 
