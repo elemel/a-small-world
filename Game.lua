@@ -16,7 +16,9 @@ function Game:init()
     self.music:play()
 
     self.missions = {}
-    self.money = 1000
+    self.cash = 1000
+    self.time = 60
+    self.debt = 2000
     self.world = love.physics.newWorld()
 
     self.world:setCallbacks(function(...)
@@ -43,8 +45,16 @@ function Game:init()
         text = "Recycle (50%)",
     })
 
-    self.moneyButton = utils.newInstance(Button, self, {
-        text = "Money: 0",
+    self.cashButton = utils.newInstance(Button, self, {
+        text = "Cash: 0",
+    })
+
+    self.timeButton = utils.newInstance(Button, self, {
+        text = "Time: 0",
+    })
+
+    self.debtButton = utils.newInstance(Button, self, {
+        text = "Debt: " .. self.debt,
     })
 
     local width, height = love.graphics.getDimensions()
@@ -61,6 +71,8 @@ function Game:init()
 end
 
 function Game:update(dt)
+    self.time = self.time - dt
+
     for i, mission in ipairs(self.missions) do
         mission:update(dt)
     end
@@ -86,7 +98,8 @@ function Game:update(dt)
         self.recycleButton.color = {0xff, 0xff, 0xff, 0xff}
     end
 
-    self:updateMoneyButton()
+    self:updateCashButton()
+    self:updateTimeButton()
 
     while true do
         local callback = table.remove(self.callbackStack)
@@ -109,7 +122,9 @@ function Game:draw()
     self.mineButton:draw()
     self.cannonButton:draw()
     self.recycleButton:draw()
-    self.moneyButton:draw()
+    self.cashButton:draw()
+    self.timeButton:draw()
+    self.debtButton:draw()
 end
 
 function Game:mousepressed(x, y, button, istouch)
@@ -135,9 +150,9 @@ function Game:mousepressed(x, y, button, istouch)
 
             local object = utils.getObjectFromFixture(fixture)
 
-            if object and object.objectType == "structure" and not object.recycled then
-                object.recycled = true
-                self.money = self.money + 50
+            if object and object.objectType == "structure" and not object.destroyed then
+                object.destroyed = true
+                self.cash = self.cash + 50
 
                 table.insert(self.callbackStack, function()
                     object:destroy()
@@ -154,17 +169,20 @@ function Game:mousepressed(x, y, button, istouch)
         local color = {0x00, 0x99, 0xcc, 0xff}
         local width
         local height
+        local health
 
         if self.mineButton.selected then
             structureType = "mine"
             cost = 100
             width = 3
             height = 3
+            health = 16
         elseif self.cannonButton.selected then
             structureType = "turret"
             cost = 100
             width = 3
             height = 3 * math.cos(math.pi / 6)
+            health = 16
         end
 
         local worldX, worldY = self.camera:toWorldPoint(x, y)
@@ -174,17 +192,20 @@ function Game:mousepressed(x, y, button, istouch)
 
         local nearestStructure = self.planet:findNearestStructure(x, y, 4.5)
 
-        if structureType and cost < self.money and not nearestStructure then
-            self.money = self.money - cost
+        if structureType and cost < self.cash and not nearestStructure then
+            self.cash = self.cash - cost
 
             utils.newInstance(Structure, self.planet, {
                 structureType = structureType,
+                teamName = "good",
                 x = x,
                 y = y,
                 angle = angle - 0.5 * math.pi,
                 width = width,
                 height = height,
                 color = color,
+                health = health,
+                production = 8,
             })
         end
     end
@@ -202,12 +223,16 @@ function Game:updateCameraScale()
     self.camera.scale = (3 / 16) * viewportSize / self.planet.radius
 end
 
-function Game:updateMoneyButton()
-    self.moneyButton.text = "Money: " .. math.floor(self.money)
+function Game:updateCashButton()
+    self.cashButton.text = "Cash: " .. math.floor(self.cash)
+end
+
+function Game:updateTimeButton()
+    self.timeButton.text = "Time: " .. math.max(math.ceil(self.time), 0)
 end
 
 function Game:layout(width, height)
-    local commandButtonWidth = love.window.toPixels(128)
+    local commandButtonWidth = love.window.toPixels(192)
     local commandButtonHeight = love.window.toPixels(32)
     local statButtonWidth = love.window.toPixels(192)
     local statButtonHeight = love.window.toPixels(32)
@@ -231,11 +256,23 @@ function Game:layout(width, height)
     self.recycleButton.height = commandButtonHeight
     self.recycleButton.fontSize = fontSize
 
-    self.moneyButton.x = 0
-    self.moneyButton.y = height - 1 * statButtonHeight
-    self.moneyButton.width = statButtonWidth
-    self.moneyButton.height = statButtonHeight
-    self.moneyButton.fontSize = fontSize
+    self.cashButton.x = 0
+    self.cashButton.y = height - 3 * statButtonHeight
+    self.cashButton.width = statButtonWidth
+    self.cashButton.height = statButtonHeight
+    self.cashButton.fontSize = fontSize
+
+    self.timeButton.x = 0
+    self.timeButton.y = height - 2 * statButtonHeight
+    self.timeButton.width = statButtonWidth
+    self.timeButton.height = statButtonHeight
+    self.timeButton.fontSize = fontSize
+
+    self.debtButton.x = 0
+    self.debtButton.y = height - 1 * statButtonHeight
+    self.debtButton.width = statButtonWidth
+    self.debtButton.height = statButtonHeight
+    self.debtButton.fontSize = fontSize
 end
 
 function Game:debugDrawPhysics()

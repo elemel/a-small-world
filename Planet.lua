@@ -1,6 +1,7 @@
 local utils = require("utils")
 
 local Planet = utils.newClass()
+Planet.objectType = "planet"
 
 function Planet:init(game, config)
     self.game = assert(game)
@@ -10,6 +11,11 @@ function Planet:init(game, config)
     self.bullets = {}
     self.waves = {}
     self.body = love.physics.newBody(game.world)
+
+    self.body:setUserData({
+        object = self,
+    })
+
     local shape = love.physics.newCircleShape(self.radius)
     self.fixture = love.physics.newFixture(self.body, shape)
     self.crustColor = {0x99, 0xcc, 0x00, 0xff}
@@ -18,6 +24,10 @@ function Planet:init(game, config)
 end
 
 function Planet:update(dt)
+    for i, wave in ipairs(self.waves) do
+        wave:update(dt)
+    end
+
     for i, structure in ipairs(self.structures) do
         structure:update(dt)
     end
@@ -28,10 +38,6 @@ function Planet:update(dt)
 
     for i, bullet in ipairs(self.bullets) do
         bullet:update(dt)
-    end
-
-    for i, wave in ipairs(self.waves) do
-        wave:update(dt)
     end
 end
 
@@ -75,6 +81,10 @@ function Planet:findNearestStructure(x, y, maxDistance)
     end
 
     return nearestStructure
+end
+
+function Planet:handleCollision(fixture1, fixture2, contact, direction)
+    return false
 end
 
 return Planet

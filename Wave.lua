@@ -7,13 +7,15 @@ local Wave = utils.newClass()
 function Wave:init(planet, config)
     self.planet = assert(planet)
     table.insert(self.planet.waves, self)
+    self.teamName = assert(config.teamName)
     self.duration = config.duration or 1
 
     self.ship = utils.newInstance(Ship, self.planet, {
+        teamName = self.teamName,
         width = 2,
         height = 2 * math.cos(math.pi / 6),
         color = {0xff, 0x66, 0x00, 0xff},
-        health = 3,
+        health = 8,
     })
 
     self.path = utils.newInstance(Path, config.vertices)

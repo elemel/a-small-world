@@ -1,3 +1,4 @@
+local Cannon = require("Cannon")
 local utils = require("utils")
 
 local Ship = utils.newClass()
@@ -6,6 +7,7 @@ Ship.objectType = "ship"
 function Ship:init(planet, config)
     self.planet = assert(planet)
     table.insert(self.planet.ships, self)
+    self.teamName = assert(config.teamName)
     self.body = love.physics.newBody(self.planet.game.world, x, y, "dynamic")
 
     self.body:setUserData({
@@ -27,6 +29,16 @@ function Ship:init(planet, config)
     self.color = config.color or {0xff, 0xff, 0xff, 0xff}
     self.health = config.health or 1
     self.destroyed = false
+
+    self.cannon = utils.newInstance(Cannon, self.planet, self.body, {
+        teamName = self.teamName,
+        x = 0,
+        y = (2 / 3) * self.height,
+        fireDelay = 1,
+        bulletRadius = 0.25,
+        bulletVelocity = 8,
+        bulletTtl = 32,
+    })
 end
 
 function Ship:destroy()
@@ -55,6 +67,19 @@ function Ship:update(dt)
         table.insert(self.planet.game.callbackStack, function()
             self:destroy()
         end)
+    else
+        local target = self:findNearestTarget()
+
+        if target then
+            local bulletX, bulletY = self.body:getWorldPoint(self.cannon.x, self.cannon.y)
+            local targetX, targetY = target:getPosition()
+            self.cannon.fire = true
+            self.cannon.angle = math.atan2(targetY - bulletY, targetX - bulletX) - self.body:getAngle()
+        else
+            self.cannon.fire = false
+        end
+
+        self.cannon:update(dt)
     end
 end
 
@@ -66,6 +91,28 @@ end
 
 function Ship:handleCollision(fixture1, fixture2, contact, direction)
     return false
+end
+
+function Ship:getPosition()
+    return self.body:getPosition()
+end
+
+function Ship:findNearestTarget()
+    local nearestTarget
+    local minSquaredDistance = math.huge
+    local x, y = self.body:getWorldPoint(self.cannon.x, self.cannon.y)
+
+    for i, target in ipairs(self.planet.structures) do
+        local targetX, targetY = target:getPosition()
+        local squaredDistance = (targetX - x) ^ 2 + (targetY - y) ^ 2
+
+        if squaredDistance < minSquaredDistance then
+            nearestTarget = target
+            minSquaredDistance = squaredDistance
+        end
+    end
+
+    return nearestTarget
 end
 
 return Ship

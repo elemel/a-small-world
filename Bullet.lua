@@ -5,6 +5,7 @@ local Bullet = utils.newClass()
 function Bullet:init(planet, config)
     self.planet = assert(planet)
     table.insert(self.planet.bullets, self)
+    self.teamName = assert(config.teamName)
     self.radius = config.radius or 1
     local x = config.x or 0
     local y = config.y or 0
@@ -17,12 +18,14 @@ function Bullet:init(planet, config)
     local velocityX = config.velocityX or 0
     local velocityY = config.velocityY or 0
     self.body:setLinearVelocity(velocityX, velocityY)
+    self.body:setBullet(true)
     local shape = love.physics.newCircleShape(self.radius)
     self.fixture = love.physics.newFixture(self.body, shape)
     self.fixture:setSensor(true)
     self.ttl = config.ttl or 1
     self.damage = config.damage or 1
     self.destroyed = false
+    self.color = config.color or {0xff, 0xff, 0xff, 0xff}
 end
 
 function Bullet:destroy()
@@ -57,7 +60,7 @@ function Bullet:update(dt)
 end
 
 function Bullet:draw()
-    self.planet.game.colorStack:push(0xff, 0xcc, 0x00)
+    self.planet.game.colorStack:push(unpack(self.color))
     local x, y = self.body:getPosition()
     love.graphics.circle("fill", x, y, self.radius)
     self.planet.game.colorStack:pop()
@@ -74,7 +77,18 @@ function Bullet:handleCollision(fixture1, fixture2, contact, direction)
         return false
     end
 
-    if object.objectType == "ship" and not object.destroyed then
+    if object.objectType == "planet" then
+        self.destroyed = true
+        return true
+    end
+
+    if object.objectType == "ship" and object.teamName ~= self.teamName and not object.destroyed then
+        self.destroyed = true
+        object.health = object.health - self.damage
+        return true
+    end
+
+    if object.objectType == "structure" and object.teamName ~= self.teamName and not object.destroyed then
         self.destroyed = true
         object.health = object.health - self.damage
         return true

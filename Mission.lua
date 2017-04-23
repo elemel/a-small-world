@@ -6,25 +6,33 @@ local Mission = utils.newClass()
 function Mission:init(game)
     self.game = assert(game)
     table.insert(self.game.missions, self)
-    self.waveDelay = 0
+    self.waveDelay = 4 * (0.5 + math.random())
+    self.angleDelay = 0
+    self.angle = 0
 end
 
 function Mission:update(dt)
+    self.angleDelay = self.angleDelay - dt
+
+    if self.angleDelay < 0 then
+        self.angleDelay = 16 * (0.5 + math.random())
+        self.angle = 2 * math.pi * love.math.random()
+    end
+
     self.waveDelay = self.waveDelay - dt
 
     if self.waveDelay < 0 then
-        self.waveDelay = 8 + 4 * (2 * math.random() - 1)
+        self.waveDelay = 4 * (0.5 + math.random())
         self:generateWave()
     end
 end
 
 function Mission:generateWave()
-    local angle = 2 * math.pi * love.math.random()
     local vertexCount = 16
     local vertices = {}
 
     for i = 1, vertexCount do
-        local vertexAngle = angle + 0.125 * math.pi * (2 * love.math.random() - 1)
+        local vertexAngle = self.angle + 0.125 * math.pi * (2 * love.math.random() - 1)
         local distance
 
         if i == 1 or i == vertexCount then
@@ -44,6 +52,7 @@ function Mission:generateWave()
     end
 
     utils.newInstance(Wave, self.game.planet, {
+        teamName = "evil",
         duration = 16,
         vertices = vertices,
     })
