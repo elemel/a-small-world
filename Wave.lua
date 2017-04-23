@@ -13,6 +13,7 @@ function Wave:init(planet, config)
         width = 2,
         height = 2 * math.cos(math.pi / 6),
         color = {0xff, 0x66, 0x00, 0xff},
+        health = 3,
     })
 
     self.path = utils.newInstance(Path, config.vertices)
@@ -33,6 +34,10 @@ end
 
 function Wave:update(dt)
     self.time = self.time + dt
+
+    if self.ship.destroyed then
+       return
+    end
 
     local t = utils.clamp(self.time / self.duration, 0, 1)
     local x, y, dx, dy = self.path:evaluate(t)

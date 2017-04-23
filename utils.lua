@@ -32,4 +32,15 @@ function utils.clamp(x, x1, x2)
     return math.min(math.max(x, x1), x2)
 end
 
+function utils.getObjectFromBody(body)
+    local userData = body:getUserData()
+    return userData and userData.object
+end
+
+function utils.getObjectFromFixture(fixture)
+    local userData = fixture:getUserData()
+    local object = userData and userData.object
+    return object or utils.getObjectFromBody(fixture:getBody())
+end
+
 return utils

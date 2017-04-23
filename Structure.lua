@@ -33,7 +33,11 @@ function Structure:init(planet, config)
 
     local shape = love.physics.newPolygonShape(self.body:getWorldPoints(unpack(self.polygon)))
     self.fixture = love.physics.newFixture(self.planet.body, shape)
-    self.fixture:setUserData(self)
+
+    self.fixture:setUserData({
+        object = self,
+    })
+
     self.fireDelay = 0
     self.color = config.color or {0xff, 0xff, 0xff, 0xff}
     self.recycled = false
@@ -59,14 +63,14 @@ end
 function Structure:update(dt)
     if self.structureType == "mine" then
         self.planet.game.money = self.planet.game.money + dt
-    elseif self.structureType == "cannon" then
+    elseif self.structureType == "turret" then
         self.fireDelay = self.fireDelay - dt
 
         if self.fireDelay < 0 then
             local target = self:findTarget()
 
             if target then
-                self.fireDelay = 3 + (2 * love.math.random() - 1)
+                self.fireDelay = 1
                 local localAngle = self.angle - self.planet.body:getAngle() + 0.5 * math.pi
                 local localBulletX = self.x + (2 / 3) * self.height * math.cos(localAngle)
                 local localBulletY = self.y + (2 / 3) * self.height * math.sin(localAngle)
@@ -81,8 +85,8 @@ function Structure:update(dt)
                         radius = 0.25,
                         x = bulletX,
                         y = bulletY,
-                        velocityX = 8 * targetDirectionX,
-                        velocityY = 8 * targetDirectionY,
+                        velocityX = 16 * targetDirectionX,
+                        velocityY = 16 * targetDirectionY,
                         ttl = 16,
                     })
                 end
@@ -121,6 +125,10 @@ function Structure:findTarget()
     end
 
     return target
+end
+
+function Structure:handleCollision(fixture1, fixture2, contact, direction)
+    return false
 end
 
 return Structure

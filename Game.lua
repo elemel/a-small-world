@@ -18,6 +18,11 @@ function Game:init()
     self.missions = {}
     self.money = 1000
     self.world = love.physics.newWorld()
+
+    self.world:setCallbacks(function(...)
+        self:beginContact(...)
+    end)
+
     self.fontCache = utils.newInstance(FontCache, {})
     self.colorStack = utils.newInstance(ColorStack)
     self.callbackStack = {}
@@ -31,7 +36,7 @@ function Game:init()
     })
 
     self.cannonButton = utils.newInstance(Button, self, {
-        text = "Build Cannon",
+        text = "Build Turret",
     })
 
     self.recycleButton = utils.newInstance(Button, self, {
@@ -128,7 +133,7 @@ function Game:mousepressed(x, y, button, istouch)
                 return true
             end
 
-            local object = fixture:getUserData()
+            local object = utils.getObjectFromFixture(fixture)
 
             if object and object.objectType == "structure" and not object.recycled then
                 object.recycled = true
@@ -156,7 +161,7 @@ function Game:mousepressed(x, y, button, istouch)
             width = 3
             height = 3
         elseif self.cannonButton.selected then
-            structureType = "cannon"
+            structureType = "turret"
             cost = 100
             width = 3
             height = 3 * math.cos(math.pi / 6)
@@ -252,6 +257,20 @@ function Game:debugDrawPhysics()
     end
 
     self.colorStack:pop()
+end
+
+function Game:beginContact(fixture1, fixture2, contact)
+    local object1 = utils.getObjectFromFixture(fixture1)
+
+    if object1 and object1:handleCollision(fixture1, fixture2, contact, 1) then
+        return
+    end
+
+    local object2 = utils.getObjectFromFixture(fixture2)
+
+    if object2 and object2:handleCollision(fixture2, fixture1, contact, -1) then
+        return
+    end
 end
 
 return Game
