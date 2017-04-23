@@ -2,9 +2,11 @@ local Button = require("Button")
 local Camera = require("Camera")
 local ColorStack = require("ColorStack")
 local FontCache = require("FontCache")
+local Mission = require("Mission")
 local Planet = require("Planet")
 local Structure = require("Structure")
 local utils = require("utils")
+local Wave = require("Wave")
 
 local Game = utils.newClass()
 
@@ -13,7 +15,8 @@ function Game:init()
     self.music:setLooping(true)
     self.music:play()
 
-    self.money = 0
+    self.missions = {}
+    self.money = 1000
     self.world = love.physics.newWorld()
     self.fontCache = utils.newInstance(FontCache, {})
     self.colorStack = utils.newInstance(ColorStack)
@@ -23,15 +26,19 @@ function Game:init()
         radius = 10,
     })
 
-    self.mineButton = utils.newInstance(Button, self.fontCache, {
+    self.mineButton = utils.newInstance(Button, self, {
         text = "Build Mine",
     })
 
-    self.cannonButton = utils.newInstance(Button, self.fontCache, {
+    self.cannonButton = utils.newInstance(Button, self, {
         text = "Build Cannon",
     })
 
-    self.moneyButton = utils.newInstance(Button, self.fontCache, {
+    self.recycleButton = utils.newInstance(Button, self, {
+        text = "Recycle (50%)",
+    })
+
+    self.moneyButton = utils.newInstance(Button, self, {
         text = "Money: 0",
     })
 
@@ -44,11 +51,35 @@ function Game:init()
     })
 
     self:updateCameraScale()
+
+    utils.newInstance(Mission, self, {})
 end
 
 function Game:update(dt)
+    for i, mission in ipairs(self.missions) do
+        mission:update(dt)
+    end
+
     self.planet:update(dt)
     self.world:update(dt)
+
+    if self.mineButton.selected then
+        self.mineButton.color = {0x33, 0xff, 0x00, 0xff}
+    else
+        self.mineButton.color = {0xff, 0xff, 0xff, 0xff}
+    end
+
+    if self.cannonButton.selected then
+        self.cannonButton.color = {0x33, 0xff, 0x00, 0xff}
+    else
+        self.cannonButton.color = {0xff, 0xff, 0xff, 0xff}
+    end
+
+    if self.recycleButton.selected then
+        self.recycleButton.color = {0x33, 0xff, 0x00, 0xff}
+    else
+        self.recycleButton.color = {0xff, 0xff, 0xff, 0xff}
+    end
 
     self:updateMoneyButton()
 
@@ -66,13 +97,13 @@ end
 function Game:draw()
     love.graphics.push()
     local viewportSize = math.min(self.camera.viewportWidth, self.camera.viewportHeight)
-    self.camera.scale = 0.25 * viewportSize / self.planet.radius
     self.camera:transform()
     self.planet:draw()
-    self:debugDrawPhysics()
+    -- self:debugDrawPhysics()
     love.graphics.pop()
     self.mineButton:draw()
     self.cannonButton:draw()
+    self.recycleButton:draw()
     self.moneyButton:draw()
 end
 
@@ -80,25 +111,72 @@ function Game:mousepressed(x, y, button, istouch)
     if self.mineButton:containsPoint(x, y) then
         self.mineButton.selected = true
         self.cannonButton.selected = false
+        self.recycleButton.selected = false
     elseif self.cannonButton:containsPoint(x, y) then
         self.mineButton.selected = false
         self.cannonButton.selected = true
-    else
+        self.recycleButton.selected = false
+    elseif self.recycleButton:containsPoint(x, y) then
+        self.mineButton.selected = false
+        self.cannonButton.selected = false
+        self.recycleButton.selected = true
+    elseif self.recycleButton.selected then
         local worldX, worldY = self.camera:toWorldPoint(x, y)
-        local angle = math.atan2(worldY, worldX)
-        local x = self.planet.radius * math.cos(angle)
-        local y = self.planet.radius * math.sin(angle)
-        local width = 2 + 2 * love.math.random()
-        local height = 2 + 2 * love.math.random()
 
-        utils.newInstance(Structure, self.planet, {
-            structureType = "cannon",
-            x = x,
-            y = y,
-            angle = angle - 0.5 * math.pi,
-            width = width,
-            height = height,
-        })
+        self.world:queryBoundingBox(worldX, worldY, worldX, worldY, function(fixture)
+            if not fixture:testPoint(worldX, worldY) then
+                return true
+            end
+
+            local object = fixture:getUserData()
+
+            if object and object.objectType == "structure" and not object.recycled then
+                object.recycled = true
+                self.money = self.money + 50
+
+                table.insert(self.callbackStack, function()
+                    object:destroy()
+                end)
+
+                return false
+            else
+                return true
+            end
+        end)
+    else
+        local structureType = nil
+        local cost = 0
+        local color = {0x00, 0x99, 0xcc, 0xff}
+
+        if self.mineButton.selected then
+            structureType = "mine"
+            cost = 100
+        elseif self.cannonButton.selected then
+            structureType = "cannon"
+            cost = 100
+        end
+
+        if structureType and cost < self.money then
+            self.money = self.money - cost
+
+            local worldX, worldY = self.camera:toWorldPoint(x, y)
+            local angle = math.atan2(worldY, worldX)
+            local width = 2 + 1 * love.math.random()
+            local height = 2 + 1 * love.math.random()
+
+            local x = self.planet.radius * math.cos(angle)
+            local y = self.planet.radius * math.sin(angle)
+
+            utils.newInstance(Structure, self.planet, {
+                structureType = structureType,
+                x = x,
+                y = y,
+                angle = angle - 0.5 * math.pi,
+                width = width,
+                height = height,
+                color = color,
+            })
+        end
     end
 end
 
@@ -111,7 +189,7 @@ end
 
 function Game:updateCameraScale()
     local viewportSize = math.min(self.camera.viewportWidth, self.camera.viewportHeight)
-    self.camera.scale = 0.25 * viewportSize / self.planet.radius
+    self.camera.scale = (3 / 16) * viewportSize / self.planet.radius
 end
 
 function Game:updateMoneyButton()
@@ -136,6 +214,12 @@ function Game:layout(width, height)
     self.cannonButton.width = commandButtonWidth
     self.cannonButton.height = commandButtonHeight
     self.cannonButton.fontSize = fontSize
+
+    self.recycleButton.x = 0
+    self.recycleButton.y = 2 * commandButtonHeight
+    self.recycleButton.width = commandButtonWidth
+    self.recycleButton.height = commandButtonHeight
+    self.recycleButton.fontSize = fontSize
 
     self.moneyButton.x = 0
     self.moneyButton.y = height - 1 * statButtonHeight

@@ -2,8 +2,8 @@ local utils = require("utils")
 
 local Button = utils.newClass()
 
-function Button:init(fontCache, config)
-    self.fontCache = assert(fontCache)
+function Button:init(game, config)
+    self.game = assert(game)
     self.x = config.x or 0
     self.y = config.y or 0
     self.width = config.width or 1
@@ -12,23 +12,20 @@ function Button:init(fontCache, config)
     self.fontName = config.fontName or "default"
     self.fontSize = config.fontSize or 1
     self.selected = config.selected or false
+    self.color = config.color or {0xff, 0xff, 0xff, 0xff}
+    self.textColor = config.textColor or {0x00, 0x00, 0x00, 0xff}
 end
 
 function Button:draw()
-    local oldRed, oldGreen, oldBlue, oldAlpha = love.graphics:getColor()
+    self.game.colorStack:push(unpack(self.color))
 
-    if self.selected then
-        love.graphics.setColor(0x00, 0xff, 0x00, 0xff)
-    else
-        love.graphics.setColor(0xff, 0xff, 0xff, 0xff)
-    end
-
-    local font = self.fontCache:getFont(self.fontName, self.fontSize)
+    local font = self.game.fontCache:getFont(self.fontName, self.fontSize)
     local oldFont = love.graphics:getFont()
     love.graphics.setFont(font)
     local textWidth = font:getWidth(self.text)
     local textHeight = font:getHeight()
-    love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
+    love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
+    love.graphics.setColor(unpack(self.textColor))
 
     love.graphics.print(
         self.text,
@@ -37,7 +34,7 @@ function Button:draw()
         0, 1, 1, math.floor(0.5 * textWidth), math.floor(0.5 * textHeight))
 
     love.graphics.setFont(oldFont)
-    love.graphics.setColor(oldRed, oldGreen, oldBlue, oldAlpha)
+    self.game.colorStack:pop()
 end
 
 function Button:containsPoint(x, y)

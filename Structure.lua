@@ -2,6 +2,7 @@ local Bullet = require("Bullet")
 local utils = require("utils")
 
 local Structure = utils.newClass()
+Structure.objectType = "structure"
 
 function Structure:init(planet, config)
     self.planet = assert(planet)
@@ -12,9 +13,47 @@ function Structure:init(planet, config)
     self.angle = config.angle or 0
     self.width = config.width or 1
     self.height = config.height or 1
-    local shape = love.physics.newRectangleShape(self.x, self.y, self.width, self.height, self.angle)
+    self.body = love.physics.newBody(self.planet.game.world, self.x, self.y, "static")
+    self.body:setAngle(self.angle - self.planet.body:getAngle())
+
+    if self.structureType == "mine" then
+        self.polygon = {
+            -0.5 * self.width, -(2 / 3) * self.height,
+            0.5 * self.width, -(2 / 3) * self.height,
+            0.5 * self.width, (1 / 3) * self.height,
+            -0.5 * self.width, (1 / 3) * self.height,
+        }
+    else
+        self.polygon = {
+            0, (2 / 3) * self.height,
+            -0.5 * self.width, -(1 / 3) * self.height,
+            0.5 * self.width, -(1 / 3) * self.height,
+        }
+    end
+
+    local shape = love.physics.newPolygonShape(self.body:getWorldPoints(unpack(self.polygon)))
     self.fixture = love.physics.newFixture(self.planet.body, shape)
+    self.fixture:setUserData(self)
     self.fireDelay = 0
+    self.color = config.color or {0xff, 0xff, 0xff, 0xff}
+    self.recycled = false
+end
+
+function Structure:destroy()
+    if self.fixture then
+        self.fixture:destroy()
+        self.fixture = nil
+    end
+
+    if self.body then
+        self.body:destroy()
+        self.body = nil
+    end
+
+    if self.planet then
+        utils.removeArrayValue(self.planet.structures, self)
+        self.planet = nil
+    end
 end
 
 function Structure:update(dt)
@@ -24,27 +63,64 @@ function Structure:update(dt)
         self.fireDelay = self.fireDelay - dt
 
         if self.fireDelay < 0 then
-            self.fireDelay = 1
-            local x, y = self.planet.body:getWorldPoint(self.x, self.y)
-            local directionX, directionY = utils.normalize2(x, y)
+            local target = self:findTarget()
 
-            utils.newInstance(Bullet, self.planet, {
-                x = x,
-                y = y,
-                velocityX = 10 * directionX,
-                velocityY = 10 * directionY,
-                ttl = 10,
-            })
+            if target then
+                self.fireDelay = 3 + (2 * love.math.random() - 1)
+                local localAngle = self.angle - self.planet.body:getAngle() + 0.5 * math.pi
+                local localBulletX = self.x + (2 / 3) * self.height * math.cos(localAngle)
+                local localBulletY = self.y + (2 / 3) * self.height * math.sin(localAngle)
+                local bulletX, bulletY = self.planet.body:getWorldPoint(localBulletX, localBulletY)
+                local targetX, targetY = target.body:getPosition()
+                local targetDirectionX, targetDirectionY = utils.normalize2(targetX - bulletX, targetY - bulletY)
+                local directionX = math.cos(self.angle)
+                local directionY = math.sin(self.angle)
+
+                if directionX * targetDirectionY - directionY * targetDirectionX > 0 then
+                    utils.newInstance(Bullet, self.planet, {
+                        radius = 0.25,
+                        x = bulletX,
+                        y = bulletY,
+                        velocityX = 8 * targetDirectionX,
+                        velocityY = 8 * targetDirectionY,
+                        ttl = 16,
+                    })
+                end
+            end
         end
     end
 end
 
 function Structure:draw()
+    self.planet.game.colorStack:push(unpack(self.color))
     love.graphics.push()
     love.graphics.translate(self.x, self.y)
     love.graphics.rotate(self.angle)
-    love.graphics.rectangle("line", -0.5 * self.width, -0.5 * self.height, self.width, self.height)
+    love.graphics.polygon("fill", self.polygon)
     love.graphics.pop()
+    self.planet.game.colorStack:pop()
+end
+
+function Structure:findTarget()
+    local target
+    local minSquaredDistance = math.huge
+
+    local localAngle = self.angle - self.planet.body:getAngle() + 0.5 * math.pi
+    local localBulletX = self.x + (2 / 3) * self.height * math.cos(localAngle)
+    local localBulletY = self.y + (2 / 3) * self.height * math.sin(localAngle)
+    local x, y = self.planet.body:getWorldPoint(localBulletX, localBulletY)
+
+    for i, ship in ipairs(self.planet.ships) do
+        local shipX, shipY = ship.body:getPosition()
+        local squaredDistance = (shipX - x) ^ 2 + (shipY - y) ^ 2
+
+        if squaredDistance < minSquaredDistance then
+            target = ship
+            minSquaredDistance = squaredDistance
+        end
+    end
+
+    return target
 end
 
 return Structure

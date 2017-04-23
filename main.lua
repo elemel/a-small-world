@@ -4,8 +4,10 @@ local utils = require("utils")
 function love.load()
     love.window.setMode(800, 600, {
         fullscreentype = "desktop",
+        fullscreen = true,
         resizable = true,
         highdpi = true,
+        msaa = 16,
     })
 
     love.physics.setMeter(1)

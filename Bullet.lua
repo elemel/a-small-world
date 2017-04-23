@@ -46,8 +46,10 @@ function Bullet:update(dt)
 end
 
 function Bullet:draw()
+    self.planet.game.colorStack:push(0xff, 0xcc, 0x00)
     local x, y = self.body:getPosition()
-    love.graphics.circle("line", x, y, self.radius)
+    love.graphics.circle("fill", x, y, self.radius)
+    self.planet.game.colorStack:pop()
 end
 
 return Bullet

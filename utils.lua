@@ -28,4 +28,8 @@ function utils.normalize2(x, y)
     return x / length, y / length, length
 end
 
+function utils.clamp(x, x1, x2)
+    return math.min(math.max(x, x1), x2)
+end
+
 return utils
